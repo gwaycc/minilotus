@@ -4,6 +4,7 @@ Refer to https://github.com/filecoin-project/lotus
 
 # Build
 Reference to https://docs.filecoin.io/get-started/lotus/installation/
+
 Mac  
 ```
 brew install go bzr jq pkg-config rustup hwloc
