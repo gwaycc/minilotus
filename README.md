@@ -4,6 +4,7 @@ Refer to https://github.com/filecoin-project/lotus
 
 # Build
 make
+./lotus-wallet --help
 
 # TODO
 * Add a MIT lisence 
