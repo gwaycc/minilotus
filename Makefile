@@ -19,7 +19,6 @@ MODULES:=
 CLEAN:=
 BINS:=
 
-ldflags=-X=github.com/filecoin-project/lotus/build.CurrentCommit=+git.$(subst -,.,$(shell git describe --always --match=NeVeRmAtCh --dirty 2>/dev/null || git rev-parse --short HEAD 2>/dev/null))
 ifneq ($(strip $(LDFLAGS)),)
 	ldflags+=-extldflags=$(LDFLAGS)
 endif
@@ -69,7 +68,7 @@ interopnet: build-devnets
 
 lotus-wallet: $(BUILD_DEPS)
 	rm -f lotus-wallet
-	$(GOCC) build $(GOFLAGS) -o lotus-wallet ./lotus-wallet
+	$(GOCC) build $(GOFLAGS) -o lotus-wallet ./cmd/lotus-wallet
 .PHONY: lotus-wallet
 BINS+=lotus-wallet
 

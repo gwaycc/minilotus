@@ -69,7 +69,7 @@ var app = &cli.App{
 		if err := json.Unmarshal(kiBytes, &ki); err != nil {
 			return errors.As(err)
 		}
-		key, err := wallet.NewKey(ctx, ki)
+		key, err := wallet.NewKey(ki)
 		if err != nil {
 			return errors.As(err)
 		}
