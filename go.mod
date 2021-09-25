@@ -1,4 +1,4 @@
-module github.com/gwaycc/lotus-wallet
+module github.com/gwaycc/lotus-easy
 
 go 1.16
 

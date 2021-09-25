@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/gwaylib/errors"
 	"github.com/gwaylib/log"
@@ -24,19 +23,18 @@ func DaemonSub(ctx context.Context, topic *pubsub.Topic) error {
 			//continue
 		}
 
-		fmt.Println("next message")
+		log.Info("waitting the messages")
 		m, err := sub.Next(ctx)
 		if err != nil {
 			log.Warn(errors.As(err))
 			continue
 		}
-		fmt.Println("next message done")
 		msg, err := types.DecodeSignedMessage(m.Data)
 		if err != nil {
 			log.Warn(errors.As(err, *m))
 			continue
 		}
-		log.Debug(msg.Message)
+		log.Infof("%+v", msg.Message)
 	}
 	return nil
 }
