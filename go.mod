@@ -1,4 +1,4 @@
-module github.com/gwaycc/lotus-easy
+module github.com/gwaycc/minilotus
 
 go 1.16
 
