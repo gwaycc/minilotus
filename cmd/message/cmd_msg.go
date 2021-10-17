@@ -16,7 +16,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/gwaylib/errors"
-	"github.com/gwaylib/log"
 	"github.com/libp2p/go-libp2p"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 )
@@ -151,38 +150,6 @@ func init() {
 			Name:  "subscribe",
 			Usage: "Subscribe Filecoin message",
 			Action: func(cctx *cli.Context) error {
-				ctx := context.TODO()
-
-				opts := []libp2p.Option{
-					NetID(),
-					libp2p.NoListenAddrs,
-					libp2p.UserAgent("lotus-1.11.2"),
-				}
-				srcHost, err := libp2p.New(ctx, opts...)
-				if err != nil {
-					return errors.As(err)
-				}
-				defer srcHost.Close()
-
-				netName := dtypes.NetworkName(cctx.String("network"))
-
-				if err := ConnectBootstrap(ctx, srcHost, string(netName)); err != nil {
-					return errors.As(err)
-				}
-
-				ps, err := pubsub.NewGossipSub(ctx, srcHost)
-				if err != nil {
-					return errors.As(err)
-				}
-
-				subTitle := build.BlocksTopic(netName)
-				//subTitle := build.MessagesTopic(netName)
-				subTopic, err := ps.Join(subTitle)
-				if err != nil {
-					return errors.As(err)
-				}
-				log.Infof("Already join the network: %s", netName)
-				DaemonSub(ctx, subTopic)
 				return nil
 			},
 		},
