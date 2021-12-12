@@ -24,8 +24,12 @@ func init() {
 				// waiting exit.
 				opts := []libp2p.Option{
 					NetID(),
-					libp2p.NoListenAddrs,
-					libp2p.UserAgent("lotus-1.11.2"),
+					//libp2p.NoListenAddrs,
+					libp2p.EnableNATService(),
+					libp2p.NATPortMap(),
+					libp2p.EnableRelay(),
+					//libp2p.EnableAutoRelay(),
+					libp2p.UserAgent("minilotus-1.13.1"),
 				}
 				srcHost, err := libp2p.New(ctx, opts...)
 				if err != nil {
@@ -53,9 +57,11 @@ func init() {
 					return errors.As(err)
 				}
 
-				log.Infof("Already join the network: %s", netName)
+				log.Infof("Join the network: %s", netName)
 				go DaemonSubBlock(ctx, blockTopic)
-				go DaemonSubMsg(ctx, msgTopic)
+
+				_ = msgTopic
+				// go DaemonSubMsg(ctx, msgTopic)
 
 				// waiting exit.
 				log.Info("[ctrl+c to exit]")

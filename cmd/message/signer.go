@@ -25,3 +25,6 @@ func Sign(ctx context.Context, ki types.KeyInfo, msg *types.Message) (*types.Sig
 		Signature: *sig,
 	}, nil
 }
+func Verify() error {
+	return nil
+}
