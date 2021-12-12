@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/gwaylib/errors"
 	"github.com/gwaylib/log"
@@ -83,41 +84,55 @@ func (t tipset) Put(b *BlockMsg) ([]*BlockMsg, error) {
 	return nil, errors.New("fork").As(b.String())
 }
 
-func DaemonSubBlock(ctx context.Context, topic *pubsub.Topic) error {
+func DaemonSubBlock(ctx context.Context, topic *pubsub.Topic, timeout time.Duration) error {
+	defer topic.Close()
+
 	sub, err := topic.Subscribe()
 	if err != nil {
 		return err
 	}
-	ts := tipset{}
+	timeoutTimer := time.NewTimer(timeout)
+	timeoutCtx, timeoutFn := context.WithCancel(ctx)
+	defer timeoutFn()
+
+	alive := make(chan error, 1)
+	go func() {
+		ts := tipset{}
+		for {
+			log.Info("waitting the blocks")
+			m, err := sub.Next(timeoutCtx)
+			if err != nil {
+				alive <- errors.As(err)
+				return
+			}
+			alive <- nil
+			blocks, err := types.DecodeBlockMsg(m.Data)
+			if err != nil {
+				log.Warn(errors.As(err, *m))
+				continue
+			}
+			// TODO: verify the blocksig
+			b := &BlockMsg{blocks}
+			removed, err := ts.Put(b)
+			if err != nil {
+				log.Warn(errors.As(err))
+			} else {
+				log.Infof("new block:%s", b.String())
+				for _, r := range removed {
+					log.Infof("remove block:%s", r.Headers())
+				}
+			}
+		}
+	}()
 	for {
 		select {
+		case <-timeoutTimer.C:
+			timeoutFn()
+			return errors.New("data timeout")
 		case <-ctx.Done():
-			return nil
-		default:
-			//continue
-		}
-
-		log.Info("waitting the blocks")
-		m, err := sub.Next(ctx)
-		if err != nil {
-			log.Warn(errors.As(err))
-			continue
-		}
-		blocks, err := types.DecodeBlockMsg(m.Data)
-		if err != nil {
-			log.Warn(errors.As(err, *m))
-			continue
-		}
-		// TODO: verify the blocksig
-		b := &BlockMsg{blocks}
-		removed, err := ts.Put(b)
-		if err != nil {
-			log.Warn(errors.As(err))
-		} else {
-			log.Infof("new block:%s", b.String())
-			for _, r := range removed {
-				log.Infof("remove block:%s", r.Headers())
-			}
+			return ctx.Err()
+		case <-alive:
+			timeoutTimer.Reset(timeout)
 		}
 	}
 	return nil
@@ -125,24 +140,22 @@ func DaemonSubBlock(ctx context.Context, topic *pubsub.Topic) error {
 
 var countMsg = 0
 
-func DaemonSubMsg(ctx context.Context, topic *pubsub.Topic) error {
+func DaemonSubMsg(ctx context.Context, ps *pubsub.PubSub, tc string) error {
+	topic, err := ps.Join(tc)
+	if err != nil {
+		return errors.As(err)
+	}
+	defer topic.Close()
+
 	sub, err := topic.Subscribe()
 	if err != nil {
 		return err
 	}
 	for {
-		select {
-		case <-ctx.Done():
-			return nil
-		default:
-			//continue
-		}
-
 		//log.Info("waitting the messages")
 		m, err := sub.Next(ctx)
 		if err != nil {
-			log.Warn(errors.As(err))
-			continue
+			return errors.As(err)
 		}
 		msg, err := types.DecodeSignedMessage(m.Data)
 		if err != nil {

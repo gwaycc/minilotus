@@ -72,10 +72,16 @@ func ConnectBootstrap(ctx context.Context, src host.Host, kind string) error {
 			result += "success"
 		}(p)
 	}
+	noPeers := true
 	for _, _ = range pis {
 		result := <-done
+		if strings.HasSuffix(result, "success") {
+			noPeers = false
+		}
 		fmt.Println(result)
 	}
-	// TODO: return error when all peers failed.
+	if noPeers {
+		return errors.New("no available peer")
+	}
 	return nil
 }
