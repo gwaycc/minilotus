@@ -27,7 +27,7 @@ func init() {
 					NetID(),
 					libp2p.NoListenAddrs,
 					libp2p.Ping(true),
-					libp2p.ConnectionManager(connmgr.NewConnManager(50, 200, 20*time.Second)),
+					libp2p.ConnectionManager(connmgr.NewConnManager(5, 50, 20*time.Second)),
 					libp2p.UserAgent("minilotus-1.13.1"),
 					libp2p.FallbackDefaults,
 				}
