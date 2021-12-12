@@ -45,7 +45,7 @@ type tipset map[string]*BlockMsg
 
 func (t tipset) Dump() {
 	for _, val := range t {
-		log.Info(val.String())
+		log.Debug(val.String())
 	}
 }
 func (t tipset) Put(b *BlockMsg) ([]*BlockMsg, error) {
@@ -117,9 +117,9 @@ func DaemonSubBlock(ctx context.Context, topic *pubsub.Topic, timeout time.Durat
 			if err != nil {
 				log.Warn(errors.As(err))
 			} else {
-				log.Infof("new block:%s", b.String())
+				log.Debugf("new block:%s", b.String())
 				for _, r := range removed {
-					log.Infof("remove block:%s", r.Headers())
+					log.Debugf("remove block:%s", r.Headers())
 				}
 			}
 		}
