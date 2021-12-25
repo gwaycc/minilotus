@@ -1,27 +1,71 @@
 package main
 
 import (
+	"context"
 	"os"
 	"os/signal"
 	"time"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
+	"github.com/gwaycc/minilotus/lib/rpc"
+	"github.com/gwaycc/minilotus/node/repo"
 	"github.com/gwaylib/errors"
 	"github.com/gwaylib/log"
 	"github.com/libp2p/go-libp2p"
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/smallnest/rpcx/protocol"
 	"github.com/urfave/cli/v2"
 )
 
 func init() {
 	app.Register("daemon",
 		&cli.Command{
-			Name:  "daemon",
-			Flags: []cli.Flag{},
+			Name: "daemon",
+			Flags: []cli.Flag{
+				&cli.StringFlag{
+					Name:  "rpc-listen",
+					Value: ":9882",
+					Usage: "api listen address.",
+				},
+				&cli.StringFlag{
+					Name:  "rpc-discovery",
+					Value: "rpc-server-1",
+					Usage: "rpc discovery name",
+				},
+			},
 			Action: func(cctx *cli.Context) error {
 				ctx := cctx.Context
+				// implement the rpc
+				rpcAddr := cctx.String("rpc-listen")
+				//rpcHost := cctx.String("rpc-discovery") // TODO: make a service discovery
+				r, err := repo.NewRepo(repo.ExpandPath(cctx.String("repo")))
+				if err != nil {
+					return errors.As(err)
+				}
+				token, err := r.ReadToken()
+				if err != nil {
+					return errors.As(err)
+				}
+
+				// rpc auth
+				auth := func(ctx context.Context, req *protocol.Message, clientToken string) error {
+					// TODO: parse token params
+					if clientToken != token {
+						return rpc.ErrInvalidToken.As(req.ServiceMethod, clientToken)
+					}
+					return nil
+				}
+				// listen the api address
+				go func() {
+					s := rpc.NewServer(auth, RPC_SERVICE_NAME, RpcSrv)
+					log.Infof("rpc listen at:%s", rpcAddr)
+					if err := s.Serve("reuseport", rpcAddr); err != nil {
+						log.Exit(2, errors.As(err))
+					}
+				}()
+
 				// waiting exit.
 				opts := []libp2p.Option{
 					NetID(),

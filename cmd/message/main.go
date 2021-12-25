@@ -18,6 +18,11 @@ var app = &cmd.App{
 				Value: "testnetnet",
 				Usage: "the netkind of filecoin, support: 'testnetnet', 'calibrationnet'; the mainnet is called 'testnetnet'",
 			},
+			&cli.StringFlag{
+				Name:  "repo",
+				Value: "./repo",
+				Usage: "repository of data",
+			},
 		},
 	},
 }

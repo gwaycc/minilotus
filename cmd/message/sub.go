@@ -41,14 +41,21 @@ func (b *BlockMsg) String() string {
 	return b.Headers() + "|" + b.SamePart()
 }
 
-type tipset map[string]*BlockMsg
+type Tipset map[string]*BlockMsg
 
-func (t tipset) Dump() {
+func (t Tipset) Dump() {
 	for _, val := range t {
 		log.Debug(val.String())
 	}
 }
-func (t tipset) Put(b *BlockMsg) ([]*BlockMsg, error) {
+func (t Tipset) DumpString() []string {
+	result := []string{}
+	for _, val := range t {
+		result = append(result, val.String())
+	}
+	return result
+}
+func (t Tipset) Put(b *BlockMsg) ([]*BlockMsg, error) {
 	key := fmt.Sprintf("%d%x", b.Header.BlockSig.Type, b.Header.BlockSig.Data)
 	sameNum := 0
 	diffNum := 0
@@ -97,7 +104,7 @@ func DaemonSubBlock(ctx context.Context, topic *pubsub.Topic, timeout time.Durat
 
 	alive := make(chan error, 1)
 	go func() {
-		ts := tipset{}
+		ts := RpcSrv.ts
 		for {
 			log.Info("waitting the blocks")
 			m, err := sub.Next(timeoutCtx)
