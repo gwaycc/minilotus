@@ -3,6 +3,7 @@ module github.com/gwaycc/minilotus
 go 1.16
 
 require (
+	github.com/alangpierce/go-forceexport v0.0.0-20160317203124-8f1d6941cd75 // indirect
 	github.com/fd/go-nat v1.0.0 // indirect
 	github.com/filecoin-project/go-address v0.0.6
 	github.com/filecoin-project/go-jsonrpc v0.1.5
@@ -24,7 +25,7 @@ require (
 	github.com/mattn/go-colorable v0.1.12 // indirect
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/multiformats/go-multiaddr v0.4.1
-	github.com/smallnest/rpcx v1.6.11
+	github.com/smallnest/rpcx v1.7.3
 	github.com/urfave/cli/v2 v2.2.0
 	github.com/whyrusleeping/go-smux-multiplex v3.0.16+incompatible // indirect
 	github.com/whyrusleeping/go-smux-multistream v2.0.2+incompatible // indirect
@@ -32,6 +33,7 @@ require (
 	github.com/whyrusleeping/yamux v1.1.5 // indirect
 	golang.org/x/sys v0.0.0-20211216021012-1d35b9e2eb4e // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1
+	google.golang.org/grpc/examples v0.0.0-20210823233914-c361e9ea1646 // indirect
 )
 
 replace github.com/libp2p/go-libp2p-yamux => github.com/libp2p/go-libp2p-yamux v0.5.1

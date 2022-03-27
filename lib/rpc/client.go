@@ -7,6 +7,7 @@ import (
 
 	"github.com/gwaylib/errors"
 	xclient "github.com/smallnest/rpcx/client"
+	"github.com/smallnest/rpcx/protocol"
 )
 
 type Client interface {
@@ -57,6 +58,7 @@ func (c *client) client() xclient.XClient {
 
 	option := xclient.DefaultOption
 	option.IdleTimeout = 10 * time.Second
+	option.SerializeType = protocol.JSON
 
 	xclient := xclient.NewXClient(c.srvName, xclient.Failtry, xclient.RandomSelect, c.dis, option)
 	xclient.Auth(c.token)

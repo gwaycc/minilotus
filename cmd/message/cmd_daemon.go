@@ -81,6 +81,8 @@ func init() {
 				}
 				defer srcHost.Close()
 
+				RpcSrv.host = srcHost
+
 				netName := dtypes.NetworkName(cctx.String("network"))
 				ps, err := pubsub.NewGossipSub(ctx, srcHost)
 				if err != nil {

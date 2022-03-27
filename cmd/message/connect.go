@@ -30,7 +30,7 @@ const (
 /dns4/bootstrap-8.mainnet.filops.net/tcp/1347/p2p/12D3KooWScFR7385LTyR4zU1bYdzSiiAb5rnNABfVahPvVSzyTkR
 /dns4/lotus-bootstrap.ipfsforce.com/tcp/41778/p2p/12D3KooWGhufNmZHF3sv48aQeS13ng5XVJZ9E6qy2Ms4VzqeUsHk
 /dns4/bootstrap-0.starpool.in/tcp/12757/p2p/12D3KooWDqaZkm3oSczUm3dvAJ5aL2rdSeQ5VQbnHRTQNEFShhmc
-/dns4/bootstrap-1.starpool.in/tcp/12757/p2p/12D3KooWDgQrcyZpcMAkbEFSJJYV2qXEMwXX67WTbqpNdbifHaEq
+/dns4/bootstrap-1.starpool.in/tcp/12757/p2p/12D3KooWSkxqRYoFwtoHJ8cVcoeSpAkfrr4f3wzBUGxhNLYr8Dyb
 /dns4/node.glif.io/tcp/1235/p2p/12D3KooWBF8cpp65hp2u9LK5mh19x67ftAam84z9LsfaquTDSBpt
 `
 	calibBootstrap = `
