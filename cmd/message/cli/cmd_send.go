@@ -1,4 +1,4 @@
-package main
+package cli
 
 import (
 	"context"
@@ -7,46 +7,56 @@ import (
 	"fmt"
 	"io/ioutil"
 
+	"github.com/gwaycc/minilotus/node/chain"
+	"github.com/gwaycc/minilotus/node/repo"
 	"github.com/urfave/cli/v2"
 
-	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/gwaylib/errors"
-	"github.com/libp2p/go-libp2p"
-	pubsub "github.com/libp2p/go-libp2p-pubsub"
 )
 
 func init() {
 	subCmds := []*cli.Command{
 		&cli.Command{
 			Name:  "send",
-			Usage: "Send a Filecoin message to the net, send [to address] [0.1/0.1fil/0.1afil]",
+			Usage: "Send a Filecoin message to the net, send [json message]",
 			Flags: []cli.Flag{
 				&cli.StringFlag{
 					Name:  "wallet-key",
-					Value: "./wallet.key",
+					Value: "./private.key",
 					Usage: "the private key of filecoin wallet",
+				},
+				&cli.BoolFlag{
+					Name:  "wallet-encrypted",
+					Value: true,
+					Usage: "the private key is encrypted",
 				},
 				&cli.Uint64Flag{
 					Name:  "nonce",
 					Value: 0,
-					Usage: "message nonce of wallet address, you can get it from the statistics of messages in the public filecoin browsers",
+					Usage: "TODO",
 				},
 				&cli.StringFlag{
 					Name:  "basefee",
-					Value: "1afil", // 1 attoFIL
-					Usage: "you can get it from the public filecoin browsers",
+					Value: "", // 1 attoFIL
+					Usage: "1afil for unit, unset will do auto fill",
+				},
+				&cli.StringFlag{
+					Name:  "data",
+					Value: "", // json params string format
+					Usage: "TODO",
 				},
 			},
 			Action: func(cctx *cli.Context) error {
 				ctx := context.TODO()
 
+				walletKey := cctx.String("wallet-key")
 				// loading wallet private key
-				kiHex, err := ioutil.ReadFile("private.key")
+				kiHex, err := ioutil.ReadFile(walletKey)
 				if err != nil {
 					return errors.As(err)
 				}
@@ -58,29 +68,23 @@ func init() {
 				if err := json.Unmarshal(kiBytes, &ki); err != nil {
 					return errors.As(err)
 				}
+
+				// TODO: decrypt private key
 				key, err := wallet.NewKey(ki)
 				if err != nil {
 					return errors.As(err)
 				}
 
-				if cctx.Args().Len() != 2 {
-					return errors.New("expects target and amount")
+				if cctx.Args().Len() != 1 {
+					return errors.New("expects json string input")
 				}
-				to, err := address.NewFromString(cctx.Args().Get(0))
-				if err != nil {
-					return errors.As(err)
-				}
-
-				value, err := types.ParseFIL(cctx.Args().Get(1))
-				if err != nil {
+				msgStr := cctx.Args().Get(0)
+				msg := &types.Message{}
+				if err := json.Unmarshal([]byte(msgStr), msg); err != nil {
 					return errors.As(err)
 				}
 
 				nonce := cctx.Uint64("nonce")
-				method := abi.MethodNum(0)
-
-				// read from private key
-				from := key.Address
 
 				bFee, err := types.ParseFIL(cctx.String("basefee"))
 				if err != nil {
@@ -94,62 +98,38 @@ func init() {
 				gasPremium := abi.NewTokenAmount(0)
 				_ = baseFee
 
-				msg := &types.Message{
-					Version: 0,
-					To:      to,
-					From:    from,
-					Nonce:   nonce,
-					Method:  method,
-					Value:   abi.TokenAmount(value),
-
-					GasLimit:   gasLimit,
-					GasFeeCap:  gasFeeCap,
-					GasPremium: gasPremium,
-				}
-				signed, err := Sign(ctx, ki, msg)
+				// TODO: fix gas
+				msg.From = key.Address
+				msg.Nonce = nonce
+				msg.GasLimit = gasLimit
+				msg.GasFeeCap = gasFeeCap
+				msg.GasPremium = gasPremium
+				signed, err := chain.Sign(ctx, ki, msg)
 				if err != nil {
 					return errors.As(err)
 				}
-
-				opts := []libp2p.Option{
-					NetID(),
-					libp2p.NoListenAddrs,
-					libp2p.UserAgent("lotus-1.11.2"),
-				}
-				srcHost, err := libp2p.New(ctx, opts...)
-				if err != nil {
-					return errors.As(err)
-				}
-				defer srcHost.Close()
 
 				netName := dtypes.NetworkName(cctx.String("network"))
 
-				if err := ConnectBootstrap(ctx, srcHost, string(netName)); err != nil {
-					return errors.As(err)
-				}
-
-				ps, err := pubsub.NewGossipSub(ctx, srcHost)
-				if err != nil {
-					return errors.As(err)
-				}
-
 				// send message
-				sendTitle := build.MessagesTopic(netName)
-				sendTopic, err := ps.Join(sendTitle)
+				topic := build.MessagesTopic(netName)
+
+				rpcApi := cctx.String("rpc-api")
+				r, err := repo.NewRepo(repo.ExpandPath(cctx.String("repo")))
 				if err != nil {
 					return errors.As(err)
 				}
-				if err := Publish(ctx, sendTopic, signed); err != nil {
+				token, err := r.ReadToken()
+				if err != nil {
+					return errors.As(err)
+				}
+
+				c := chain.NewRpcClient(rpcApi, token)
+
+				if _, err := c.Publish(ctx, topic, signed); err != nil {
 					return errors.As(err)
 				}
 				fmt.Printf("message has sent: %+v\n", *signed)
-				return nil
-			},
-		},
-		&cli.Command{
-			Name:  "subscribe",
-			Usage: "Subscribe Filecoin message",
-			Action: func(cctx *cli.Context) error {
 				return nil
 			},
 		},

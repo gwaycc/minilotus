@@ -1,34 +1,11 @@
 package main
 
 import (
-	"os"
-
-	"github.com/gwaycc/minilotus/cmd"
-	"github.com/urfave/cli/v2"
+	"github.com/gwaycc/minilotus/cmd/message/cli"
 )
 
-var app = &cmd.App{
-	&cli.App{
-		Name:    "Mini Lotus",
-		Version: cmd.Version(),
-		Usage:   "Mini Lotus",
-		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:  "network",
-				Value: "testnetnet",
-				Usage: "the netkind of filecoin, support: 'testnetnet', 'calibrationnet'; the mainnet is called 'testnetnet'",
-			},
-			&cli.StringFlag{
-				Name:  "repo",
-				Value: "./repo",
-				Usage: "repository of data",
-			},
-		},
-	},
-}
-
 func main() {
-	if err := app.Run(os.Args); err != nil {
+	if err := cli.Run(); err != nil {
 		panic(err)
 	}
 }

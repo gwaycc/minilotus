@@ -1,4 +1,4 @@
-package main
+package chain
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 
 	"github.com/filecoin-project/lotus/lib/addrutil"
 	"github.com/gwaylib/errors"
+	"github.com/gwaylib/log"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 )
@@ -18,7 +19,7 @@ const (
 
 // see : https://github.com/filecoin-project/lotus/tree/master/build/bootstrap
 const (
-	mainBootstrap = `
+	mainTrustNode = `
 /dns4/bootstrap-0.mainnet.filops.net/tcp/1347/p2p/12D3KooWCVe8MmsEMes2FzgTpt9fXtmCY7wrq91GRiaC8PHSCCBj
 /dns4/bootstrap-1.mainnet.filops.net/tcp/1347/p2p/12D3KooWCwevHg1yLCvktf2nvLu7L9894mcrJR4MsBCcm4syShVc
 /dns4/bootstrap-2.mainnet.filops.net/tcp/1347/p2p/12D3KooWEWVwHGn2yR36gKLozmb4YjDJGerotAPGxmdWZx2nxMC4
@@ -33,7 +34,7 @@ const (
 /dns4/bootstrap-1.starpool.in/tcp/12757/p2p/12D3KooWSkxqRYoFwtoHJ8cVcoeSpAkfrr4f3wzBUGxhNLYr8Dyb
 /dns4/node.glif.io/tcp/1235/p2p/12D3KooWBF8cpp65hp2u9LK5mh19x67ftAam84z9LsfaquTDSBpt
 `
-	calibBootstrap = `
+	calibTrustNode = `
 /dns4/bootstrap-0.calibration.fildev.network/tcp/1347/p2p/12D3KooWJkikQQkxS58spo76BYzFt4fotaT5NpV2zngvrqm4u5ow
 /dns4/bootstrap-1.calibration.fildev.network/tcp/1347/p2p/12D3KooWLce5FDHR4EX4CrYavphA5xS3uDsX6aoowXh5tzDUxJav
 /dns4/bootstrap-2.calibration.fildev.network/tcp/1347/p2p/12D3KooWA9hFfQG9GjP6bHeuQQbMD3FDtZLdW1NayxKXUT26PQZu
@@ -41,47 +42,52 @@ const (
 `
 )
 
-func ConnectBootstrap(ctx context.Context, src host.Host, kind string) error {
+func GetConnectTrustNode(ctx context.Context, kind string) ([]peer.AddrInfo, error) {
 	spi := ""
 	switch kind {
 	case TOPIC_MAINNET:
-		spi = mainBootstrap
+		spi = mainTrustNode
 	case TOPIC_CALIBNET:
-		spi = calibBootstrap
+		spi = calibTrustNode
 	default:
-		return errors.New("Unknow net kind").As(kind)
+		return nil, errors.New("Unknow net kind").As(kind)
 	}
 	pis, err := addrutil.ParseAddresses(ctx, strings.Split(strings.TrimSpace(spi), "\n"))
 	if err != nil {
-		return errors.As(err)
+		return nil, errors.As(err)
 	}
+	return pis, nil
+}
 
+func ConnectTrustNode(ctx context.Context, src host.Host, pis []peer.AddrInfo) ([]string, error) {
+	result := make([]string, len(pis))
 	done := make(chan string, len(pis))
-	for _, p := range pis {
-		go func(pi peer.AddrInfo) {
-			result := ""
+	for i, p := range pis {
+		go func(index int, pi peer.AddrInfo) {
+			resp := ""
 			defer func() {
-				done <- result
+				result[index] = resp
+				done <- resp
 			}()
-			result += fmt.Sprintf("connect %s: ", pi.ID.Pretty())
+			resp += fmt.Sprintf("connect %s: ", pi.ID.Pretty())
 			err := src.Connect(ctx, pi)
 			if err != nil {
-				result += fmt.Sprintf("failure:%s", err.Error())
+				resp += fmt.Sprintf("failure:%s", err.Error())
 				return
 			}
-			result += "success"
-		}(p)
+			resp += "success"
+		}(i, p)
 	}
 	noPeers := true
 	for _, _ = range pis {
-		result := <-done
-		if strings.HasSuffix(result, "success") {
+		resp := <-done
+		if strings.HasSuffix(resp, "success") {
 			noPeers = false
 		}
-		fmt.Println(result)
+		log.Debug(resp)
 	}
 	if noPeers {
-		return errors.New("no available peer")
+		return result, errors.New("no available peer")
 	}
-	return nil
+	return result, nil
 }

@@ -10,6 +10,7 @@ require (
 	github.com/filecoin-project/go-state-types v0.1.1-0.20210915140513-d354ccf10379
 	github.com/filecoin-project/lotus v1.13.1
 	github.com/google/uuid v1.3.0
+	github.com/gwaycc/goapp v1.0.2 // indirect
 	github.com/gwaylib/errors v0.0.0-20190905023356-162e59439c92
 	github.com/gwaylib/log v0.0.0-20211225152251-862fb96fd17c
 	github.com/gxed/pubsub v0.0.0-20180201040156-26ebdf44f824 // indirect
@@ -23,10 +24,11 @@ require (
 	github.com/libp2p/go-libp2p-peerstore v0.3.0
 	github.com/libp2p/go-libp2p-pubsub v0.5.6
 	github.com/mattn/go-colorable v0.1.12 // indirect
+	github.com/minio/cli v1.22.0 // indirect
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/multiformats/go-multiaddr v0.4.1
 	github.com/smallnest/rpcx v1.7.3
-	github.com/urfave/cli/v2 v2.2.0
+	github.com/urfave/cli/v2 v2.3.0
 	github.com/whyrusleeping/go-smux-multiplex v3.0.16+incompatible // indirect
 	github.com/whyrusleeping/go-smux-multistream v2.0.2+incompatible // indirect
 	github.com/whyrusleeping/go-smux-yamux v2.0.9+incompatible // indirect

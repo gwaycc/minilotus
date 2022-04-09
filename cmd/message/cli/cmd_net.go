@@ -1,8 +1,10 @@
-package main
+package cli
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/gwaycc/minilotus/node/chain"
 	"github.com/gwaycc/minilotus/node/repo"
 	"github.com/urfave/cli/v2"
 
@@ -12,8 +14,8 @@ import (
 func init() {
 	subCmds := []*cli.Command{
 		&cli.Command{
-			Name:  "state",
-			Usage: "get the current block height",
+			Name:  "peers",
+			Usage: "get the peers",
 			Flags: []cli.Flag{},
 			Action: func(cctx *cli.Context) error {
 				ctx := context.TODO()
@@ -27,22 +29,23 @@ func init() {
 					return errors.As(err)
 				}
 
-				c := NewRpcClient(rpcApi, token)
+				c := chain.NewRpcClient(rpcApi, token)
 
-				ret, err := c.CurrentHeight(ctx)
+				ret, err := c.Peers(ctx)
 				if err != nil {
 					return errors.As(err)
 				}
-				// fmt.Println(strings.Join(ret.Info, "\n"))
-				ret.Info.Dump()
-
+				fmt.Printf("len:%d\n", len(ret.Peers))
+				for _, p := range ret.Peers {
+					fmt.Println(p)
+				}
 				return nil
 			},
 		},
 	}
-	app.Register("block",
+	app.Register("net",
 		&cli.Command{
-			Name: "block",
+			Name: "net",
 			Flags: []cli.Flag{
 				&cli.StringFlag{
 					Name:  "rpc-api",

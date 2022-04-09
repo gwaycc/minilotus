@@ -1,4 +1,4 @@
-package main
+package cli
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/gwaycc/minilotus/lib/rpc"
+	"github.com/gwaycc/minilotus/node/chain"
 	"github.com/gwaycc/minilotus/node/repo"
 	"github.com/gwaylib/errors"
 	"github.com/gwaylib/log"
@@ -59,7 +60,7 @@ func init() {
 				}
 				// listen the api address
 				go func() {
-					s := rpc.NewServer(auth, RPC_SERVICE_NAME, RpcSrv)
+					s := rpc.NewServer(auth, chain.RPC_SERVICE_NAME, chain.RpcSrvInstance())
 					log.Infof("rpc listen at:%s", rpcAddr)
 					if err := s.Serve("reuseport", rpcAddr); err != nil {
 						log.Exit(2, errors.As(err))
@@ -68,7 +69,7 @@ func init() {
 
 				// waiting exit.
 				opts := []libp2p.Option{
-					NetID(),
+					chain.NetID(),
 					libp2p.NoListenAddrs,
 					libp2p.Ping(true),
 					libp2p.ConnectionManager(connmgr.NewConnManager(5, 50, 20*time.Second)),
@@ -81,7 +82,7 @@ func init() {
 				}
 				defer srcHost.Close()
 
-				RpcSrv.host = srcHost
+				chain.InitRpcSrv(srcHost)
 
 				netName := dtypes.NetworkName(cctx.String("network"))
 				ps, err := pubsub.NewGossipSub(ctx, srcHost)
@@ -98,13 +99,21 @@ func init() {
 					case <-ctx.Done():
 					default:
 					}
-					if err := ConnectBootstrap(ctx, srcHost, string(netName)); err != nil {
+					addrs, err := chain.GetConnectTrustNode(ctx, string(netName))
+					if err != nil {
 						log.Warn(errors.As(err))
 						time.Sleep(1e9)
 						goto connect
 					}
+					if resp, err := chain.ConnectTrustNode(ctx, srcHost, addrs); err != nil {
+						log.Warn(errors.As(err))
+						time.Sleep(1e9)
+						goto connect
+					} else {
+						log.Debug(resp)
+					}
 					log.Infof("Join the network: %s", netName)
-					if err := DaemonSubBlock(ctx, blkTopic, 1*time.Minute); err != nil {
+					if err := chain.DaemonSubBlock(ctx, blkTopic, 1*time.Minute); err != nil {
 						log.Error(errors.As(err))
 						time.Sleep(1e9)
 						goto connect

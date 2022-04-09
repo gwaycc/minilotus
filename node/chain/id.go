@@ -1,4 +1,4 @@
-package main
+package chain
 
 import (
 	"crypto/rand"
@@ -15,8 +15,8 @@ func genLibp2pKey() (crypto.PrivKey, error) {
 	return pk, nil
 }
 
+// TODO: save and read from keystore
 func NetID() libp2p.Option {
-	// TODO: read from keystore
 	pk, err := genLibp2pKey()
 	if err != nil {
 		panic(err)
