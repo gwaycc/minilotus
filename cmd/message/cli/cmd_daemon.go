@@ -113,13 +113,13 @@ func init() {
 						log.Debug(resp)
 					}
 					log.Infof("Join the network: %s", netName)
+					go chain.DaemonSubMsg(ctx, ps, build.MessagesTopic(netName))
 					if err := chain.DaemonSubBlock(ctx, blkTopic, 1*time.Minute); err != nil {
 						log.Error(errors.As(err))
 						time.Sleep(1e9)
 						goto connect
 					}
 				}()
-				// go DaemonSubMsg(ctx, ps, build.MessagesTopic(netName))
 
 				// waiting exit.
 				log.Info("[ctrl+c to exit]")

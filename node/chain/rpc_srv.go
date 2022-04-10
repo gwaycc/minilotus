@@ -20,16 +20,25 @@ const (
 type RpcService struct {
 	host host.Host
 
-	ts Tipset
+	ts    Tipset
+	mpool *Mpool
 
 	topicsLK sync.Mutex
 	topics   map[string]pubsub.Topic
 }
 
-var rpcSrv = &RpcService{
-	ts:     Tipset{},
-	topics: map[string]pubsub.Topic{},
+func NewRpcService() *RpcService {
+	return &RpcService{
+		ts: Tipset{},
+		mpool: &Mpool{
+			cidPool:  map[string]*types.SignedMessage{},
+			addrPool: map[string]*types.SignedMessage{},
+		},
+		topics: map[string]pubsub.Topic{},
+	}
 }
+
+var rpcSrv = NewRpcService()
 
 func RpcSrvInstance() *RpcService {
 	return rpcSrv
@@ -107,11 +116,13 @@ func (r *RpcService) Publish(ctx context.Context, arg *PublishArg, ret *PublishR
 
 type CurrentTipsetArg struct{}
 type CurrentTipsetRet struct {
-	Info Tipset
+	Tipset   Tipset
+	MpoolLen int
 }
 
 func (r *RpcService) CurrentTipset(ctx context.Context, arg *CurrentTipsetArg, ret *CurrentTipsetRet) error {
-	ret.Info = r.ts
+	ret.Tipset = r.ts
+	ret.MpoolLen = r.mpool.Len()
 	return nil
 }
 
@@ -129,16 +140,19 @@ func (r *RpcService) CurrentHeight(ctx context.Context, arg *CurrentHeightArg, r
 	return errors.As(err)
 }
 
-type CurrentBaseFeeArg struct{}
-type CurrentBaseFeeRet struct {
-	ParentBaseFee abi.TokenAmount // 15 identical for all blocks in same tipset: the base fee after executing parent tipset
+type CurrentGasInfoArg struct{}
+type CurrentGasInfoRet struct {
+	ParentBaseFee abi.TokenAmount
+
+	GasInfo
 }
 
-func (r *RpcService) CurrentBaseFee(ctx context.Context, arg *CurrentBaseFeeArg, ret *CurrentBaseFeeRet) error {
+func (r *RpcService) CurrentGasInfo(ctx context.Context, arg *CurrentGasInfoArg, ret *CurrentGasInfoRet) error {
 	baseFee, err := r.ts.ParentBaseFee()
 	if err != nil {
 		return errors.As(err)
 	}
 	ret.ParentBaseFee = baseFee
+	ret.GasInfo = r.ts.GasInfo()
 	return nil
 }

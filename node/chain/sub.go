@@ -2,6 +2,7 @@ package chain
 
 import (
 	"context"
+	"math"
 	"time"
 
 	"github.com/gwaylib/errors"
@@ -19,8 +20,8 @@ func DaemonSubBlock(ctx context.Context, topic *pubsub.Topic, timeout time.Durat
 		return err
 	}
 	timeoutTimer := time.NewTimer(timeout)
-	timeoutCtx, timeoutFn := context.WithCancel(ctx)
-	defer timeoutFn()
+	timeoutCtx, timeoutEnd := context.WithCancel(ctx)
+	defer timeoutEnd()
 
 	alive := make(chan error, 1)
 	go func() {
@@ -33,13 +34,34 @@ func DaemonSubBlock(ctx context.Context, topic *pubsub.Topic, timeout time.Durat
 				return
 			}
 			alive <- nil
-			blocks, err := types.DecodeBlockMsg(m.Data)
+			block, err := types.DecodeBlockMsg(m.Data)
 			if err != nil {
 				log.Warn(errors.As(err, *m))
 				continue
 			}
 			// TODO: verify the blocksig
-			b := &BlockMsg{blocks}
+
+			blsMessageData := map[string]*types.SignedMessage{}
+			for _, cid := range block.BlsMessages {
+				cidStr := cid.String()
+				blob, _ := rpcSrv.mpool.DelMessageByCid(cidStr)
+				if blob != nil {
+					blsMessageData[cidStr] = blob
+				}
+			}
+			secpkMessageData := map[string]*types.SignedMessage{}
+			for _, cid := range block.SecpkMessages {
+				cidStr := cid.String()
+				blob, _ := rpcSrv.mpool.DelMessageByCid(cidStr)
+				if blob != nil {
+					secpkMessageData[cidStr] = blob
+				}
+			}
+			b := &BlockMsg{
+				BlockMsg:         block,
+				BlsMessageData:   blsMessageData,
+				SecpkMessageData: secpkMessageData,
+			}
 			removed, err := ts.Put(b)
 			if err != nil {
 				log.Warn(errors.As(err))
@@ -54,7 +76,7 @@ func DaemonSubBlock(ctx context.Context, topic *pubsub.Topic, timeout time.Durat
 	for {
 		select {
 		case <-timeoutTimer.C:
-			timeoutFn()
+			timeoutEnd()
 			return errors.New("data timeout")
 		case <-ctx.Done():
 			return ctx.Err()
@@ -65,7 +87,7 @@ func DaemonSubBlock(ctx context.Context, topic *pubsub.Topic, timeout time.Durat
 	return nil
 }
 
-var countMsg = 0
+var countMsg = int64(0)
 
 func DaemonSubMsg(ctx context.Context, ps *pubsub.PubSub, tc string) error {
 	topic, err := ps.Join(tc)
@@ -78,21 +100,41 @@ func DaemonSubMsg(ctx context.Context, ps *pubsub.PubSub, tc string) error {
 	if err != nil {
 		return err
 	}
+	exit := make(chan error, 1)
+	go func() {
+		for {
+			//log.Info("waitting the messages")
+			m, err := sub.Next(ctx)
+			if err != nil {
+				exit <- errors.As(err)
+				return
+			}
+			msg, err := types.DecodeSignedMessage(m.Data)
+			if err != nil {
+				log.Warn(errors.As(err, *m))
+				continue
+			}
+			rpcSrv.mpool.PutMessage(msg)
+
+			countMsg = (countMsg + 1) % math.MaxInt64
+			if countMsg%100 == 0 {
+				log.Infof("msg received:%d, current size:%d", countMsg, rpcSrv.mpool.Len())
+			}
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				// break
+			}
+		}
+	}()
+
 	for {
-		//log.Info("waitting the messages")
-		m, err := sub.Next(ctx)
-		if err != nil {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case err := <-exit:
 			return errors.As(err)
-		}
-		msg, err := types.DecodeSignedMessage(m.Data)
-		if err != nil {
-			log.Warn(errors.As(err, *m))
-			continue
-		}
-		//log.Infof("%+v", msg.Message)
-		countMsg++
-		if countMsg%100 == 0 {
-			log.Infof("msg received:%d, current:%+v", countMsg, msg)
 		}
 	}
 	return nil

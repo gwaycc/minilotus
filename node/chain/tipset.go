@@ -2,15 +2,19 @@ package chain
 
 import (
 	"fmt"
+	"math"
 	"strings"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/gwaylib/errors"
 )
 
 type BlockMsg struct {
 	*types.BlockMsg
+	BlsMessageData   map[string]*types.SignedMessage
+	SecpkMessageData map[string]*types.SignedMessage
 }
 
 func (b *BlockMsg) GetSamePart() string {
@@ -37,6 +41,15 @@ func (b *BlockMsg) String() string {
 	return b.Headers() + "|" + b.GetSamePart()
 }
 
+type GasInfo struct {
+	MinGasLimit   int64
+	MinGasFeeCap  abi.TokenAmount
+	MinGasPremium abi.TokenAmount
+
+	MaxGasLimit   int64
+	MaxGasFeeCap  abi.TokenAmount
+	MaxGasPremium abi.TokenAmount
+}
 type Tipset map[string]*BlockMsg
 
 func (t Tipset) Dump() {
@@ -55,6 +68,47 @@ func (t Tipset) ParentBaseFee() (abi.TokenAmount, error) {
 		return b.Header.ParentBaseFee, nil
 	}
 	return abi.NewTokenAmount(0), errors.ErrNoData
+}
+
+func (t Tipset) GasInfo() GasInfo {
+	gas := GasInfo{
+		MinGasLimit:   math.MaxInt64,
+		MinGasFeeCap:  abi.NewTokenAmount(math.MaxInt64),
+		MinGasPremium: abi.NewTokenAmount(math.MaxInt64),
+		MaxGasLimit:   0,
+		MaxGasFeeCap:  abi.NewTokenAmount(0),
+		MaxGasPremium: abi.NewTokenAmount(0),
+	}
+	for _, b := range t {
+		for _, bMsg := range b.BlsMessageData {
+			if bMsg.Message.GasLimit < gas.MinGasLimit {
+				gas.MinGasLimit = bMsg.Message.GasLimit
+			}
+			gas.MinGasFeeCap = big.Min(bMsg.Message.GasFeeCap, gas.MinGasFeeCap)
+			gas.MinGasPremium = big.Min(bMsg.Message.GasPremium, gas.MinGasPremium)
+
+			if bMsg.Message.GasLimit > gas.MaxGasLimit {
+				gas.MaxGasLimit = bMsg.Message.GasLimit
+			}
+			gas.MaxGasFeeCap = big.Max(bMsg.Message.GasFeeCap, gas.MaxGasFeeCap)
+			gas.MaxGasPremium = big.Max(bMsg.Message.GasPremium, gas.MaxGasPremium)
+		}
+
+		for _, bMsg := range b.SecpkMessageData {
+			if bMsg.Message.GasLimit < gas.MinGasLimit {
+				gas.MinGasLimit = bMsg.Message.GasLimit
+			}
+			gas.MinGasFeeCap = big.Min(bMsg.Message.GasFeeCap, gas.MinGasFeeCap)
+			gas.MinGasPremium = big.Min(bMsg.Message.GasPremium, gas.MinGasPremium)
+
+			if bMsg.Message.GasLimit > gas.MaxGasLimit {
+				gas.MaxGasLimit = bMsg.Message.GasLimit
+			}
+			gas.MaxGasFeeCap = big.Max(bMsg.Message.GasFeeCap, gas.MaxGasFeeCap)
+			gas.MaxGasPremium = big.Max(bMsg.Message.GasPremium, gas.MaxGasPremium)
+		}
+	}
+	return gas
 }
 func (t Tipset) DumpString() []string {
 	result := []string{}

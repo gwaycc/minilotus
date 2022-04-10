@@ -14,8 +14,8 @@ import (
 func init() {
 	subCmds := []*cli.Command{
 		&cli.Command{
-			Name:  "base-fee",
-			Usage: "get the current block base fee",
+			Name:  "gas-info",
+			Usage: "get the current block gas infomation",
 			Flags: []cli.Flag{},
 			Action: func(cctx *cli.Context) error {
 				ctx := context.TODO()
@@ -30,11 +30,11 @@ func init() {
 				}
 
 				c := chain.NewRpcClient(rpcApi, token)
-				ret, err := c.CurrentBaseFee(ctx)
+				ret, err := c.CurrentGasInfo(ctx)
 				if err != nil {
 					return errors.As(err)
 				}
-				fmt.Println(ret.ParentBaseFee)
+				fmt.Printf("%+v\n", *ret)
 				return nil
 			},
 		},
@@ -60,7 +60,8 @@ func init() {
 				if err != nil {
 					return errors.As(err)
 				}
-				ret.Info.Dump()
+				fmt.Printf("mpool len:%d\n", ret.MpoolLen)
+				ret.Tipset.Dump()
 
 				return nil
 			},

@@ -17,7 +17,7 @@ type RpcClient interface {
 	CurrentTipset(context.Context) (*CurrentTipsetRet, error)
 	CurrentHeight(context.Context) (*CurrentHeightRet, error)
 	// TODO: fix parent base fee to current fee
-	CurrentBaseFee(context.Context) (*CurrentBaseFeeRet, error)
+	CurrentGasInfo(context.Context) (*CurrentGasInfoRet, error)
 }
 
 type rpcClient struct {
@@ -61,8 +61,8 @@ func (r *rpcClient) CurrentHeight(ctx context.Context) (*CurrentHeightRet, error
 	ret := &CurrentHeightRet{}
 	return ret, r.c.Call(ctx, "CurrentHeight", arg, ret)
 }
-func (r *rpcClient) CurrentBaseFee(ctx context.Context) (*CurrentBaseFeeRet, error) {
-	arg := &CurrentBaseFeeArg{}
-	ret := &CurrentBaseFeeRet{}
-	return ret, r.c.Call(ctx, "CurrentBaseFee", arg, ret)
+func (r *rpcClient) CurrentGasInfo(ctx context.Context) (*CurrentGasInfoRet, error) {
+	arg := &CurrentGasInfoArg{}
+	ret := &CurrentGasInfoRet{}
+	return ret, r.c.Call(ctx, "CurrentGasInfo", arg, ret)
 }
