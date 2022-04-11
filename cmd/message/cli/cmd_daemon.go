@@ -93,19 +93,25 @@ func init() {
 				if err != nil {
 					return errors.As(err)
 				}
+				var retryCtx context.Context
+				var retryCancel context.CancelFunc
 				go func() {
 				connect:
 					select {
 					case <-ctx.Done():
 					default:
 					}
-					addrs, err := chain.GetConnectTrustNode(ctx, string(netName))
+					if retryCancel != nil {
+						retryCancel()
+					}
+					retryCtx, retryCancel = context.WithCancel(ctx)
+					addrs, err := chain.GetConnectTrustNode(retryCtx, string(netName))
 					if err != nil {
 						log.Warn(errors.As(err))
 						time.Sleep(1e9)
 						goto connect
 					}
-					if resp, err := chain.ConnectTrustNode(ctx, srcHost, addrs); err != nil {
+					if resp, err := chain.ConnectTrustNode(retryCtx, srcHost, addrs); err != nil {
 						log.Warn(errors.As(err))
 						time.Sleep(1e9)
 						goto connect
@@ -113,8 +119,8 @@ func init() {
 						log.Debug(resp)
 					}
 					log.Infof("Join the network: %s", netName)
-					go chain.DaemonSubMsg(ctx, ps, build.MessagesTopic(netName))
-					if err := chain.DaemonSubBlock(ctx, blkTopic, 1*time.Minute); err != nil {
+					go chain.DaemonSubMsg(retryCtx, ps, build.MessagesTopic(netName))
+					if err := chain.DaemonSubBlock(retryCtx, blkTopic, 1*time.Minute); err != nil {
 						log.Error(errors.As(err))
 						time.Sleep(1e9)
 						goto connect
